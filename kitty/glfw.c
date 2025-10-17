@@ -505,6 +505,18 @@ key_callback(GLFWwindow *w, GLFWkeyevent *ev) {
 #endif
     mods_at_last_key_or_button_event = ev->mods;
     global_state.callback_os_window->cursor_blink_zero_time = monotonic();
+#ifdef __APPLE__
+    // Apply Option-Command swap if enabled
+    if (OPT(macos_option_command_swap)) {
+        int new_mods = ev->mods;
+        // Clear both Alt and Super bits
+        new_mods &= ~(GLFW_MOD_ALT | GLFW_MOD_SUPER);
+        // Swap them: Option (Alt) -> Super, Command (Super) -> Alt
+        if (ev->mods & GLFW_MOD_ALT) new_mods |= GLFW_MOD_SUPER;
+        if (ev->mods & GLFW_MOD_SUPER) new_mods |= GLFW_MOD_ALT;
+        ev->mods = new_mods;
+    }
+#endif
     if (is_window_ready_for_callbacks() && !ev->fake_event_on_focus_change) on_key_input(ev);
     global_state.callback_os_window = NULL;
     request_tick_callback();
