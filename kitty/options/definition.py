@@ -3501,6 +3501,20 @@ not supported.
 '''
     )
 
+opt('macos_option_command_swap', 'no',
+    option_type='to_bool', ctype='bool',
+    long_text='''
+Swap :kbd:`Option` and :kbd:`Command` key modifiers on macOS. When enabled,
+the :kbd:`Command` key will send :kbd:`Alt` modifier events (like pressing
+:kbd:`Alt` on PC keyboards) and the :kbd:`Option` key will send :kbd:`Super`
+modifier events. This allows using the :kbd:`Command` key for terminal
+shortcuts while preserving the :kbd:`Option` key for Unicode input. Note that
+this affects only the modifier interpretation - keyboard shortcuts defined in
+kitty will still use the physical key positions. Changing this option by
+reloading the config is not supported.
+'''
+    )
+
 opt('macos_hide_from_tasks', 'no',
     option_type='to_bool', ctype='bool',
     long_text='''
