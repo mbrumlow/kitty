@@ -382,6 +382,7 @@ option_names = (
     'macos_hide_from_tasks',
     'macos_menubar_title_max_length',
     'macos_option_as_alt',
+    'macos_option_command_swap',
     'macos_quit_when_last_window_closed',
     'macos_show_window_title_in',
     'macos_thicken_font',
@@ -576,6 +577,7 @@ class Options:
     macos_hide_from_tasks: bool = False
     macos_menubar_title_max_length: int = 0
     macos_option_as_alt: int = 0
+    macos_option_command_swap: bool = False
     macos_quit_when_last_window_closed: bool = False
     macos_show_window_title_in: choices_for_macos_show_window_title_in = 'all'
     macos_thicken_font: float = 0
