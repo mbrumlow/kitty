@@ -46,6 +46,18 @@ _glfwClearDisplayLinks(void) {
     displayLinks.count = 0;
 }
 
+void
+_glfwStopDisplayLinks(void) {
+    for (size_t i = 0; i < displayLinks.count; i++) {
+        _GLFWDisplayLinkNS *dl = &displayLinks.entries[i];
+        if (dl->displayLink && CVDisplayLinkIsRunning(dl->displayLink)) {
+            CVDisplayLinkStop(dl->displayLink);
+        }
+        // Reset timestamps to avoid false stuck detection after resume
+        dl->first_unserviced_render_frame_request_at = 0;
+    }
+}
+
 static CVReturn
 displayLinkCallback(
         CVDisplayLinkRef displayLink UNUSED,

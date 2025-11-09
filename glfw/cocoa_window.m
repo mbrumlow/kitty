@@ -548,7 +548,7 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
 - (void)windowDidResize:(NSNotification *)notification
 {
     (void)notification;
-    if (window->context.client != GLFW_NO_API)
+    if (window->context.client != GLFW_NO_API && window->context.nsgl.object)
         [window->context.nsgl.object update];
 
     if (_glfw.ns.disabledCursorWindow == window)
@@ -585,7 +585,7 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
 - (void)windowDidMove:(NSNotification *)notification
 {
     (void)notification;
-    if (window->context.client != GLFW_NO_API)
+    if (window->context.client != GLFW_NO_API && window->context.nsgl.object)
         [window->context.nsgl.object update];
 
     if (_glfw.ns.disabledCursorWindow == window)

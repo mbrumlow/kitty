@@ -260,7 +260,19 @@ display_reconfigured(CGDirectDisplayID display UNUSED, CGDisplayChangeSummaryFla
         return;
     }
     if (flags & kCGDisplaySetModeFlag) {
-        // GPU possibly changed
+        // GPU possibly changed - update all OpenGL contexts
+        _GLFWwindow* window;
+        for (window = _glfw.windowListHead; window; window = window->next) {
+            if (window->context.client != GLFW_NO_API && window->context.nsgl.object) {
+                @try {
+                    [window->context.nsgl.object update];
+                } @catch (NSException *exception) {
+                    _glfwInputError(GLFW_PLATFORM_ERROR,
+                        "Cocoa: Failed to update OpenGL context after display reconfiguration: %s",
+                        [[exception reason] UTF8String]);
+                }
+            }
+        }
     }
 }
 
@@ -329,7 +341,7 @@ static GLFWapplicationshouldhandlereopenfun handle_reopen_callback = NULL;
 
     for (window = _glfw.windowListHead;  window;  window = window->next)
     {
-        if (window->context.client != GLFW_NO_API)
+        if (window->context.client != GLFW_NO_API && window->context.nsgl.object)
             [window->context.nsgl.object update];
     }
 
@@ -414,6 +426,17 @@ static GLFWapplicationwillfinishlaunchingfun finish_launching_callback = NULL;
     [NSApp stop:nil];
 
     CGDisplayRegisterReconfigurationCallback(display_reconfigured, NULL);
+
+    // Register for system sleep/wake notifications
+    [[[NSWorkspace sharedWorkspace] notificationCenter] addObserver:self
+                                                           selector:@selector(workspaceWillSleep:)
+                                                               name:NSWorkspaceWillSleepNotification
+                                                             object:nil];
+    [[[NSWorkspace sharedWorkspace] notificationCenter] addObserver:self
+                                                           selector:@selector(workspaceDidWake:)
+                                                               name:NSWorkspaceDidWakeNotification
+                                                             object:nil];
+
     _glfwCocoaPostEmptyEvent();
 }
 
@@ -421,6 +444,14 @@ static GLFWapplicationwillfinishlaunchingfun finish_launching_callback = NULL;
 {
     (void)aNotification;
     CGDisplayRemoveReconfigurationCallback(display_reconfigured, NULL);
+
+    // Unregister sleep/wake notifications
+    [[[NSWorkspace sharedWorkspace] notificationCenter] removeObserver:self
+                                                                   name:NSWorkspaceWillSleepNotification
+                                                                 object:nil];
+    [[[NSWorkspace sharedWorkspace] notificationCenter] removeObserver:self
+                                                                   name:NSWorkspaceDidWakeNotification
+                                                                 object:nil];
 }
 
 - (void)applicationDidHide:(NSNotification *)notification
@@ -430,6 +461,49 @@ static GLFWapplicationwillfinishlaunchingfun finish_launching_callback = NULL;
 
     for (i = 0;  i < _glfw.monitorCount;  i++)
         _glfwRestoreVideoModeNS(_glfw.monitors[i]);
+}
+
+- (void)workspaceWillSleep:(NSNotification *)notification
+{
+    (void)notification;
+    // Stop all CVDisplayLinks to prevent stuck display link on wake
+    _glfwStopDisplayLinks();
+
+    // Clear current OpenGL context to prevent GPU-related crashes during sleep
+    _GLFWwindow* window;
+    for (window = _glfw.windowListHead; window; window = window->next) {
+        if (window->context.client != GLFW_NO_API && window->context.nsgl.object) {
+            NSOpenGLContext* currentContext = [NSOpenGLContext currentContext];
+            if (currentContext == window->context.nsgl.object) {
+                [NSOpenGLContext clearCurrentContext];
+                break;
+            }
+        }
+    }
+}
+
+- (void)workspaceDidWake:(NSNotification *)notification
+{
+    (void)notification;
+    // Update all OpenGL contexts after wake to handle GPU changes
+    _GLFWwindow* window;
+    for (window = _glfw.windowListHead; window; window = window->next) {
+        if (window->context.client != GLFW_NO_API && window->context.nsgl.object) {
+            @try {
+                [window->context.nsgl.object update];
+                // Clear the view to force context refresh
+                [window->context.nsgl.object clearDrawable];
+                [window->context.nsgl.object setView:window->ns.view];
+            } @catch (NSException *exception) {
+                _glfwInputError(GLFW_PLATFORM_ERROR,
+                    "Cocoa: Failed to update OpenGL context after wake: %s",
+                    [[exception reason] UTF8String]);
+            }
+        }
+    }
+
+    // Restart display links for windows that need them
+    _glfwRestartDisplayLinks();
 }
 
 @end // GLFWApplicationDelegate
