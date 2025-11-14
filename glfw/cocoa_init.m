@@ -453,8 +453,9 @@ GLFWAPI GLFWColorScheme glfwGetCurrentSystemColorTheme(bool query_if_unintialize
         if ([keyPath isEqualToString:@"effectiveAppearance"]) {
             // The initial call (from NSKeyValueObservingOptionInitial) might happen on a background thread.
             // Dispatch to the main thread to be safe, especially if updating UI.
+            __block __typeof__(self) weakSelf = self;
             dispatch_async(dispatch_get_main_queue(), ^{
-                [self handleAppearanceChange];
+                [weakSelf handleAppearanceChange];
             });
         }
     } else {
@@ -500,19 +501,12 @@ GLFWAPI GLFWColorScheme glfwGetCurrentSystemColorTheme(bool query_if_unintialize
 
 @interface GLFWApplication : NSApplication
 - (void)tick_callback;
-- (void)render_frame_received:(id)displayIDAsID;
 @end
 
 @implementation GLFWApplication
 - (void)tick_callback
 {
     _glfwDispatchTickCallback();
-}
-
-- (void)render_frame_received:(id)displayIDAsID
-{
-    CGDirectDisplayID displayID = [(NSNumber*)displayIDAsID unsignedIntValue];
-    _glfwDispatchRenderFrame(displayID);
 }
 
 @end

@@ -134,7 +134,37 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
-0.43.2 [future]
+0.44.1 [future]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Add support for the `paste events protocol <https://rockorager.dev/misc/bracketed-paste-mime/>`__ (:iss:`9183`)
+
+- icat kitten: Add support for animated PNG and animated WebP, netPBM images, ICC color profiles and CCIP color space metadata to the builtin engine
+
+- icat kitten: Add a new flag :option:`kitty +kitten icat --fit` to control how images are scaled to fit the screen (:iss:`9201`)
+
+- icat kitten: The :option:`kitty +kitten icat --scale-up` flag now takes effect when not using :option:`kitty +kitten icat --place` as well
+
+- Add a mappable action :ac:`copy_last_command_output` to copy the output of the last
+  command to the clipboard (:pull:`9185`)
+
+- ssh kitten: Fix a bug where automatic login was not working (:iss:`9187`)
+
+- Graphics: Fix overwrite composition mode for animation frames not being honored
+
+- Automatic color scheme switching: Fix title bar and scroll bar colors not being updated (:iss:`9167`)
+
+- macOS: Fix cycle through OS windows only swapping between the two most recent
+  OS Windows. Also add a cycle through OS Windows backwards action.
+  (:iss:`9215`)
+
+- :ac:`goto_session`: allow specifying a directory to select a session file
+  from the directory (:pull:`9219`)
+
+- Have reloading config also reload the custom tab bar python modules (:disc:`9221`)
+
+
+0.44.0 [2025-11-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Allow kitty to read a specified set of environment variables from your
@@ -172,7 +202,37 @@ Detailed list of changes
 
 - macOS: Fix indeterminate progress bar displayed on dock icon increasing speed when indeterminate progress is set without being cleared first (:iss:`9114`)
 
+- macOS: Performance and power usage improvements of about 5-10% (:pull:`9131`)
+
+- macOS: Add an item to the global menu to Cycle through OS windows
+
+- macOS: Quick access terminal: Fix a crash when changing font size (:iss:`9178`)
+
 - Wayland: Fix ``center-sized`` panels not working on smithay based compositors (:pull:`9117`)
+
+- Wayland: Fix scrolling using some mouse wheels that produce "VALUE120" based
+  scroll events too fast on some compositors (:pull:`9128`)
+
+- Add support for Unicode 17
+
+- Fix a regression in 0.43.0 that caused :opt:`tab_bar_margin_width` to be
+  doubled on the right edge of the tab bar (:iss:`9154`)
+
+- Session files: Add a new ``focus_tab`` command to specify which tab should be
+  active when a session is loaded. Accepts either a plain number (0-based index)
+  or a match expression for flexible tab selection, allowing sessions to preserve
+  the active tab state (:doc:`sessions`)
+
+- :ac:`save_as_session`: Add ``--base-dir`` option to specify a base directory
+  for saving session files with relative paths, useful when the current working
+  directory is not the desired location (:doc:`sessions`)
+
+- Add ``state:focused_os_window`` match query to select all windows in the
+  currently focused OS window (:ref:`search_syntax`)
+
+- Session saving now preserves visual tab order and active tab rather than tab
+  activation history as this is generally more important. In the future may
+  have it save tab history as well (:pull:`9163`)
 
 0.43.1 [2025-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

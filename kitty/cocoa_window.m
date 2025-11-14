@@ -258,6 +258,8 @@ PENDING(clear_screen, CLEAR_SCREEN)
 PENDING(clear_last_command, CLEAR_LAST_COMMAND)
 PENDING(reload_config, RELOAD_CONFIG)
 PENDING(toggle_macos_secure_keyboard_entry, TOGGLE_MACOS_SECURE_KEYBOARD_ENTRY)
+PENDING(macos_cycle_through_os_windows, MACOS_CYCLE_THROUGH_OS_WINDOWS)
+PENDING(macos_cycle_through_os_windows_backwards, MACOS_CYCLE_THROUGH_OS_WINDOWS_BACKWARDS)
 PENDING(toggle_fullscreen, TOGGLE_FULLSCREEN)
 PENDING(open_kitty_website, OPEN_KITTY_WEBSITE)
 PENDING(hide_macos_app, HIDE)
@@ -319,6 +321,7 @@ typedef struct {
     GlobalShortcut clear_terminal_and_scrollback, clear_screen, clear_scrollback, clear_last_command;
     GlobalShortcut toggle_macos_secure_keyboard_entry, toggle_fullscreen, open_kitty_website;
     GlobalShortcut hide_macos_app, hide_macos_other_apps, minimize_macos_window, quit;
+    GlobalShortcut macos_cycle_through_os_windows, macos_cycle_through_os_windows_backwards;
 } GlobalShortcuts;
 static GlobalShortcuts global_shortcuts;
 
@@ -337,6 +340,7 @@ cocoa_set_global_shortcut(PyObject *self UNUSED, PyObject *args) {
     else Q(reload_config); else Q(toggle_macos_secure_keyboard_entry); else Q(toggle_fullscreen);
     else Q(open_kitty_website); else Q(hide_macos_app); else Q(hide_macos_other_apps);
     else Q(minimize_macos_window); else Q(quit);
+    else Q(macos_cycle_through_os_windows); else Q(macos_cycle_through_os_windows_backwards);
 #undef Q
     if (gs == NULL) { PyErr_SetString(PyExc_KeyError, "Unknown shortcut name"); return NULL; }
     int cocoa_mods;
@@ -804,6 +808,9 @@ cocoa_create_global_menu(void) {
     [windowMenu addItemWithTitle:@"Zoom"
                           action:@selector(performZoom:)
                    keyEquivalent:@""];
+    [windowMenu addItem:[NSMenuItem separatorItem]];
+    MENU_ITEM(windowMenu, @"Cycle Through OS Windows", macos_cycle_through_os_windows);
+    MENU_ITEM(windowMenu, @"Cycle Through OS Windows backwards", macos_cycle_through_os_windows_backwards);
     [windowMenu addItem:[NSMenuItem separatorItem]];
     [windowMenu addItemWithTitle:@"Bring All to Front"
                           action:@selector(arrangeInFront:)

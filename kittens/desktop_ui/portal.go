@@ -359,7 +359,7 @@ func patch_portals_conf(text []byte) []byte {
 			in_preferred = sl == "[preferred]"
 			lines = append(lines, line)
 			for _, iface := range AllPortalInterfaces() {
-				lines = append(lines, iface+"=kitty")
+				lines = append(lines, iface+"=kitty;*")
 			}
 			patched = true
 		} else if in_preferred {
@@ -380,7 +380,7 @@ func patch_portals_conf(text []byte) []byte {
 		// the file was empty or did not contain a section
 		lines = append(lines, "[preferred]")
 		for _, iface := range AllPortalInterfaces() {
-			lines = append(lines, iface+"=kitty")
+			lines = append(lines, iface+"=kitty;*")
 		}
 	}
 
@@ -452,7 +452,7 @@ Exec=%s desktop-ui run-server
 	patched_file := ""
 	desktops := utils.Filter(strings.Split(d, ":"), func(x string) bool { return x != "" })
 	desktops = append(desktops, "")
-	for _, x := range strings.Split(d, ":") {
+	for x := range strings.SplitSeq(d, ":") {
 		q := filepath.Join(cf, utils.IfElse(x == "", "portals.conf", fmt.Sprintf("%s-portals.conf", strings.ToLower(x))))
 		if text, err := os.ReadFile(q); err == nil {
 			text := patch_portals_conf(text)

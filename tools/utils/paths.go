@@ -20,7 +20,7 @@ import (
 	"syscall"
 	"unicode/utf8"
 
-	"github.com/shirou/gopsutil/v3/process"
+	"github.com/shirou/gopsutil/v4/process"
 	"golang.org/x/sys/unix"
 )
 
@@ -103,7 +103,7 @@ func ConfigDirForName(name string) (config_dir string) {
 		add(xh)
 	}
 	if dirs := os.Getenv("XDG_CONFIG_DIRS"); dirs != "" {
-		for _, candidate := range strings.Split(dirs, ":") {
+		for candidate := range strings.SplitSeq(dirs, ":") {
 			add(candidate)
 		}
 	}

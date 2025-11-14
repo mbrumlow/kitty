@@ -948,6 +948,10 @@ def toggle_secure_input() -> None:
     pass
 
 
+def macos_cycle_through_os_windows(backwards: bool) -> None:
+    pass
+
+
 def start_profiler(path: str) -> None:
     pass
 
@@ -1214,6 +1218,7 @@ class Screen:
     linebuf: LineBuf
     in_bracketed_paste_mode: bool
     in_band_resize_notification: bool
+    paste_events: bool
     color_preference_notification: bool
     cursor_visible: bool
     scrolled_by: int

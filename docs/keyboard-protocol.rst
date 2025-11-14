@@ -40,6 +40,7 @@ In addition to kitty, this protocol is also implemented in:
 * The `iTerm2 terminal <https://gitlab.com/gnachman/iterm2/-/issues/10017>`__
 * The `rio terminal <https://github.com/raphamorim/rio/commit/cd463ca37677a0fc48daa8795ea46dadc92b1e95>`__
 * The `WezTerm terminal <https://wezfurlong.org/wezterm/config/lua/config/enable_kitty_keyboard.html>`__
+* The `TuiOS terminal (multiplexer) <https://github.com/Gaurav-Gosain/tuios/issues/26>`__
 
 Libraries implementing this protocol:
 
@@ -47,6 +48,7 @@ Libraries implementing this protocol:
 * The `crossterm library <https://github.com/crossterm-rs/crossterm/pull/688>`__
 * The `textual library <https://github.com/Textualize/textual/pull/4631>`__
 * The vaxis library `go <https://sr.ht/~rockorager/vaxis/>`__ and `zig <https://github.com/rockorager/libvaxis/>`__
+* The `bubbletea library <https://github.com/charmbracelet/bubbletea/issues/869>`__
 
 Programs implementing this protocol:
 
@@ -56,6 +58,7 @@ Programs implementing this protocol:
 * The `kakoune text editor <https://github.com/mawww/kakoune/issues/4103>`__
 * The `dte text editor <https://gitlab.com/craigbarnes/dte/-/issues/138>`__
 * The `Helix text editor <https://github.com/helix-editor/helix/pull/4939>`__
+* The `Flow control editor <https://github.com/neurocyte/flow?tab=readme-ov-file#requirements>`__
 * The `far2l file manager <https://github.com/elfmz/far2l/commit/e1f2ee0ef2b8332e5fa3ad7f2e4afefe7c96fc3b>`__
 * The `Yazi file manager <https://github.com/sxyazi/yazi>`__
 * The `awrit web browser <https://github.com/chase/awrit>`__
@@ -241,17 +244,19 @@ The terminal can optionally send the text associated with key events as a
 sequence of Unicode code points. This behavior is opt-in by the :ref:`progressive
 enhancement <progressive_enhancement>` mechanism described below. Some examples::
 
-    shift+a -> CSI 97 ; 2 ; 65 u  # The text 'A' is reported as 65
-    option+a -> CSI 97 ; ; 229 u  # The text 'å' is reported as 229
+    shift+a -> CSI 97 ; 2 ; 65 u   # The text 'A' is reported as 65
+    alt+a   -> CSI  0 ;   ; 229 u  # The text 'å' is reported as 229
 
 If multiple code points are present, they must be separated by colons.  If no
 known key is associated with the text the key number ``0`` must be used. The
 associated text must not contain control codes (control codes are code points
 below U+0020 and codepoints in the C0 and C1 blocks). In the above example, the
-:kbd:`option` modifier is consumed by macOS itself to produce the text å
-and therefore not reported in the keyboard protocol. On some platforms
-composition keys might produce no key information at all, in which case the key
-number ``0`` must be used.
+:kbd:`alt` modifier is consumed by the OS itself to produce the text å and not
+sent to the terminal emulator, which gets only a "text input" event and no
+information about modifiers, thus the event gets encoded with no modifiers.
+The exact behavior in these situations depends on the OS, keyboard layout, IME
+system in use and so on. In general, if the terminal emulator receives no key
+information, the key number 0 must be used to indicate a pure "text event".
 
 
 Non-Unicode keys

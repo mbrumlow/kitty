@@ -88,6 +88,7 @@ class Session:
     def __init__(self, default_title: str | None = None):
         self.tabs: list[Tab] = []
         self.active_tab_idx = 0
+        self.focus_tab_spec: str | None = None
         self.default_title = default_title
         self.os_window_size: WindowSizes | None = None
         self.os_window_class: str | None = None
@@ -177,6 +178,9 @@ class Session:
         self.active_tab_idx = max(0, len(self.tabs) - 1)
         self.tabs[-1].active_window_idx = max(0, len(self.tabs[-1].windows) - 1)
 
+    def focus_tab(self, spec: str) -> None:
+        self.focus_tab_spec = spec
+
     def set_enabled_layouts(self, raw: str) -> None:
         self.tabs[-1].enabled_layouts = to_layout_names(raw)
         if self.tabs[-1].layout not in self.tabs[-1].enabled_layouts:
@@ -192,13 +196,28 @@ class Session:
             self.tabs[-1].cwd = session_base_dir
 
 
+SESSION_FILE_EXTENSIONS = {'session', 'kitty-session', 'kitty_session'}
+
+
+def has_session_extension(path: str) -> bool:
+    name = os.path.basename(path)
+    return name.rpartition('.')[2] in SESSION_FILE_EXTENSIONS
+
+
 def session_arg_to_name(session_arg: str) -> str:
     if session_arg in ('-', '/dev/stdin', 'none'):
         session_arg = ''
     session_name = os.path.basename(session_arg)
-    if session_name.rpartition('.')[2] in ('session', 'kitty-session', 'kitty_session'):
+    if has_session_extension(session_name):
         session_name = session_name.rpartition('.')[0]
     return session_name
+
+
+def resolve_session_arg_path(path: str) -> str:
+    path = os.path.expanduser(path)
+    if not os.path.isabs(path):
+        path = os.path.join(config_dir, path)
+    return os.path.abspath(path)
 
 
 def parse_session(
@@ -250,6 +269,8 @@ def parse_session(
                 ans.add_window(rest, expand)
             elif cmd == 'focus':
                 ans.focus()
+            elif cmd == 'focus_tab':
+                ans.focus_tab(rest)
             elif cmd == 'focus_os_window':
                 ans.focus_os_window = True
             elif cmd == 'enabled_layouts':
@@ -372,8 +393,9 @@ def window_for_session_name(boss: BossType, session_name: str) -> WindowType | N
 seen_session_paths: dict[str, str] = {}
 
 
-def create_session(boss: BossType, path: str) -> str:
+def create_session(boss: BossType, path: str) -> tuple[str, bool]:
     session_name = ''
+    created_new_os_window = False
     for i, s in enumerate(create_sessions(get_options(), default_session=path)):
         if i == 0:
             session_name = s.session_name
@@ -382,14 +404,16 @@ def create_session(boss: BossType, path: str) -> str:
             tm = boss.active_tab_manager
             if tm is None:
                 os_window_id = boss.add_os_window(s)
+                created_new_os_window = True
             else:
                 os_window_id = tm.os_window_id
                 tm.add_tabs_from_session(s, session_name)
         else:
             os_window_id = boss.add_os_window(s)
+            created_new_os_window = True
         if s.focus_os_window:
             boss.focus_os_window(os_window_id)
-    return session_name
+    return session_name, created_new_os_window
 
 
 goto_session_history: list[str] = []
@@ -415,10 +439,7 @@ def switch_to_session(boss: BossType, session_name: str) -> bool:
 
 
 def resolve_session_path_and_name(path: str) -> tuple[str, str]:
-    path = os.path.expanduser(path)
-    if not os.path.isabs(path):
-        path = os.path.join(config_dir, path)
-    path = os.path.abspath(path)
+    path = resolve_session_arg_path(path)
     return path, session_arg_to_name(path)
 
 
@@ -494,8 +515,11 @@ def close_session_with_confirm(boss: BossType, cmdline: Sequence[str]) -> None:
         do_close(True)
 
 
-def choose_session(boss: BossType, opts: GotoSessionOptions) -> None:
-    all_known_sessions = get_all_known_sessions()
+def choose_session_from_map(
+    boss: BossType, opts: GotoSessionOptions, session_map: Mapping[str, str], title: str
+) -> bool:
+    if not session_map:
+        return False
     hmap = {n: len(goto_session_history)-i for i, n in enumerate(goto_session_history)}
     if opts.sort_by == 'alphabetical':
         def skey(name: str) -> tuple[int, str]:
@@ -503,13 +527,39 @@ def choose_session(boss: BossType, opts: GotoSessionOptions) -> None:
     else:
         def skey(name: str) -> tuple[int, str]:
             return hmap.get(name, len(goto_session_history)), name.lower()
-    names = sorted(all_known_sessions, key=skey)
+    names = sorted(session_map, key=skey)
 
     def chosen(name: str | None) -> None:
         if name:
-            goto_session(boss, (all_known_sessions[name],))
-    boss.choose_entry(
-        _('Select a session to activate'), ((name, name) for name in names), chosen)
+            goto_session(boss, (session_map[name],))
+    boss.choose_entry(title, ((name, name) for name in names), chosen)
+    return True
+
+
+def choose_session(boss: BossType, opts: GotoSessionOptions) -> None:
+    all_known_sessions = get_all_known_sessions()
+    choose_session_from_map(boss, opts, all_known_sessions, _('Select a session to activate'))
+
+
+def choose_session_in_directory(boss: BossType, opts: GotoSessionOptions, directory_path: str) -> None:
+    try:
+        with os.scandir(directory_path) as entries:
+            session_map = {
+                session_arg_to_name(entry.path): entry.path
+                for entry in entries
+                if entry.is_file() and has_session_extension(entry.name)
+            }
+    except OSError as e:
+        boss.show_error(
+            _('Failed to list sessions'),
+            _('Could not list session files in {0} with error: {1}').format(directory_path, e))
+        return
+    session_map = {name: path for name, path in session_map.items() if name}
+    if not choose_session_from_map(
+        boss, opts, session_map, _('Select a session to activate from {0}').format(directory_path)
+    ):
+        boss.show_error(
+            _('No session files found'), _('No session files were found inside {0}').format(directory_path))
 
 
 def parse_goto_session_cmdline(args: list[str]) -> tuple[GotoSessionOptions, list[str]]:
@@ -562,21 +612,26 @@ def goto_session(boss: BossType, cmdline: Sequence[str]) -> None:
             idx = 0
         if idx < 0:
             return goto_previous_session(boss, idx)
-    path, session_name = resolve_session_path_and_name(path)
+    resolved_path = resolve_session_arg_path(path)
+    if os.path.isdir(resolved_path):
+        choose_session_in_directory(boss, opts, resolved_path)
+        return
+    path, session_name = resolve_session_path_and_name(resolved_path)
     if not session_name:
         boss.show_error(_('Invalid session'), _('{} is not a valid path for a session').format(path))
         return
     if switch_to_session(boss, session_name):
         return
     try:
-        session_name = create_session(boss, path)
+        session_name, created_new_os_window = create_session(boss, path)
     except Exception:
         import traceback
         tb = traceback.format_exc()
         boss.show_error(_('Failed to create session'), _('Could not create session from {0} with error:\n{1}').format(path, tb))
     else:
         # Ensure newly created session is focused needed when it doesn't create its own OS Windows.
-        switch_to_session(boss, session_name)
+        if not created_new_os_window:
+            switch_to_session(boss, session_name)
 
 
 save_as_session_message = '''\
@@ -617,6 +672,14 @@ If specified, only save all windows (and their parent tabs/OS Windows) that matc
 search expression. See :ref:`search_syntax` for details on the search language. In particular if
 you want to only save windows that are present in the currently active session,
 use :code:`--match=session:.`.
+
+
+--base-dir
+When specified, relative session filenames will be saved to this directory instead of the current
+working directory. This is useful when kitty is launched from locations where the working directory
+is not your home directory, such as from system-wide shortcuts. Note that :code:`--relocatable` is
+typically not used with :code:`--base-dir`, since relocatable is meant for session files that are
+co-located with their project directories.
 '''
 
 
@@ -624,6 +687,9 @@ def save_as_session_part2(boss: BossType, opts: SaveAsSessionOptions, path: str)
     if not path:
         return
     from .config import atomic_save
+    if opts.base_dir and not os.path.isabs(path):
+        base_dir = os.path.abspath(os.path.expanduser(opts.base_dir))
+        path = os.path.join(base_dir, path)
     path = os.path.abspath(os.path.expanduser(path))
     session = '\n'.join(boss.serialize_state_as_session(path, opts))
     os.makedirs(os.path.dirname(path), exist_ok=True)
