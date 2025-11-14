@@ -520,6 +520,7 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
 @interface GLFWWindowDelegate : NSObject
 {
     _GLFWwindow* window;
+    NSArray<NSDictionary *> *_lastScreenStates;
 }
 
 - (instancetype)initWithGlfwWindow:(_GLFWwindow *)initWindow;
@@ -532,10 +533,25 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
 - (instancetype)initWithGlfwWindow:(_GLFWwindow *)initWindow
 {
     self = [super init];
-    if (self != nil)
+    if (self != nil) {
         window = initWindow;
+       _lastScreenStates = [self captureScreenStates];
+    }
 
     return self;
+}
+
+- (NSArray<NSDictionary *> *)captureScreenStates {
+    NSMutableArray *states = [NSMutableArray array];
+    for (NSScreen *screen in [NSScreen screens]) {
+        // Use the screen's deviceDescription, which contains a stable ID.
+        [states addObject:screen.deviceDescription];
+    }
+    return [states copy];
+}
+
+- (void)cleanup {
+    [_lastScreenStates release]; _lastScreenStates = nil;
 }
 
 - (BOOL)windowShouldClose:(id)sender
@@ -548,6 +564,19 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
 - (void)windowDidResize:(NSNotification *)notification
 {
     (void)notification;
+    NSArray<NSDictionary *> *currentScreenStates = [self captureScreenStates];
+    const bool is_screen_change = ![_lastScreenStates isEqualToArray:currentScreenStates];
+    const bool is_main_thread = [NSThread isMainThread];
+    NSWindowStyleMask sm = [window->ns.object styleMask];
+    const bool is_fullscreen = (sm & NSWindowStyleMaskFullScreen) != 0;
+
+    if (is_screen_change) {
+      // This resize likely happened because a screen was added, removed, or changed resolution.
+        [_lastScreenStates release];
+        _lastScreenStates = [currentScreenStates retain];
+    }
+    [currentScreenStates release];
+      
     if (window->context.client != GLFW_NO_API && window->context.nsgl.object)
         [window->context.nsgl.object update];
 
@@ -581,10 +610,6 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
     }
     // Don't render during fullscreen transitions as the OpenGL context may not be ready yet
     // See: https://github.com/kovidgoyal/kitty/issues/8983
-    NSWindowStyleMask sm = [window->ns.object styleMask];
-    const bool is_fullscreen = (sm & NSWindowStyleMaskFullScreen) != 0;
-    const bool is_main_thread = [NSThread isMainThread];
-    const bool is_screen_change = ![_lastScreenStates isEqualToArray:currentScreenStates];
     if (window->ns.resizeCallback && !is_screen_change && !is_fullscreen && is_main_thread) window->ns.resizeCallback((GLFWwindow*)window);
 }
 
