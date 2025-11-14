@@ -584,6 +584,7 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
     NSWindowStyleMask sm = [window->ns.object styleMask];
     const bool is_fullscreen = (sm & NSWindowStyleMaskFullScreen) != 0;
     const bool is_main_thread = [NSThread isMainThread];
+    const bool is_screen_change = ![_lastScreenStates isEqualToArray:currentScreenStates];
     if (window->ns.resizeCallback && !is_screen_change && !is_fullscreen && is_main_thread) window->ns.resizeCallback((GLFWwindow*)window);
 }
 
