@@ -260,6 +260,18 @@ alloc_buffer(ssize_t idx, GLsizeiptr size, GLenum usage) {
 static void*
 map_buffer(ssize_t idx, GLenum access) {
     void *ans = glMapBuffer(buffers[idx].usage, access);
+    if (ans == NULL) {
+        GLenum error = glGetError();
+        const char *error_str = "UNKNOWN";
+        switch (error) {
+            case GL_INVALID_ENUM: error_str = "GL_INVALID_ENUM"; break;
+            case GL_INVALID_VALUE: error_str = "GL_INVALID_VALUE"; break;
+            case GL_INVALID_OPERATION: error_str = "GL_INVALID_OPERATION"; break;
+            case GL_OUT_OF_MEMORY: error_str = "GL_OUT_OF_MEMORY"; break;
+            case GL_NO_ERROR: error_str = "GL_NO_ERROR (context may be invalid)"; break;
+        }
+        fprintf(stderr, "ERROR: glMapBuffer failed, returned NULL. OpenGL error: 0x%x (%s)\n", error, error_str);
+    }
     return ans;
 }
 

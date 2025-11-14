@@ -500,9 +500,13 @@ cell_prepare_to_render(ssize_t vao_idx, Screen *screen, GLfloat xstart, GLfloat 
 #define update_cell_data { \
         sz = sizeof(GPUCell) * screen->lines * screen->columns; \
         address = alloc_and_map_vao_buffer(vao_idx, sz, cell_data_buffer, GL_STREAM_DRAW, GL_WRITE_ONLY); \
-        screen_update_cell_data(screen, address, fonts_data, disable_ligatures && cursor_pos_changed); \
-        unmap_vao_buffer(vao_idx, cell_data_buffer); address = NULL; \
-        changed = true; \
+        if (address != NULL) { \
+            screen_update_cell_data(screen, address, fonts_data, disable_ligatures && cursor_pos_changed); \
+            unmap_vao_buffer(vao_idx, cell_data_buffer); address = NULL; \
+            changed = true; \
+        } else { \
+            fprintf(stderr, "WARNING: Failed to map cell data buffer, skipping cell update\n"); \
+        } \
 }
 
     if (screen->paused_rendering.expires_at) {
@@ -517,9 +521,13 @@ cell_prepare_to_render(ssize_t vao_idx, Screen *screen, GLfloat xstart, GLfloat 
 #define update_selection_data { \
     sz = (size_t)screen->lines * screen->columns; \
     address = alloc_and_map_vao_buffer(vao_idx, sz, selection_buffer, GL_STREAM_DRAW, GL_WRITE_ONLY); \
-    screen_apply_selection(screen, address, sz); \
-    unmap_vao_buffer(vao_idx, selection_buffer); address = NULL; \
-    changed = true; \
+    if (address != NULL) { \
+        screen_apply_selection(screen, address, sz); \
+        unmap_vao_buffer(vao_idx, selection_buffer); address = NULL; \
+        changed = true; \
+    } else { \
+        fprintf(stderr, "WARNING: Failed to map selection buffer, skipping selection update\n"); \
+    } \
 }
 
 #define update_graphics_data(grman) \

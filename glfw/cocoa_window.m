@@ -579,7 +579,12 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
         window->ns.height = (int)contentRect.size.height;
         _glfwInputWindowSize(window, (int)contentRect.size.width, (int)contentRect.size.height);
     }
-    if (window->ns.resizeCallback) window->ns.resizeCallback((GLFWwindow*)window);
+    // Don't render during fullscreen transitions as the OpenGL context may not be ready yet
+    // See: https://github.com/kovidgoyal/kitty/issues/8983
+    NSWindowStyleMask sm = [window->ns.object styleMask];
+    const bool is_fullscreen = (sm & NSWindowStyleMaskFullScreen) != 0;
+    const bool is_main_thread = [NSThread isMainThread];
+    if (window->ns.resizeCallback && !is_fullscreen && is_main_thread) window->ns.resizeCallback((GLFWwindow*)window);
 }
 
 - (void)windowDidMove:(NSNotification *)notification

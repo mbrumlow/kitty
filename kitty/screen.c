@@ -3272,6 +3272,12 @@ screen_update_only_line_graphics_data(Screen *self) {
 
 void
 screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_data, bool cursor_has_moved) {
+    // Safety check: if address is NULL (e.g., glMapBuffer failed after wake from sleep),
+    // skip rendering to avoid crash. See: https://github.com/kovidgoyal/kitty/issues/8983
+    if (address == NULL) {
+        fprintf(stderr, "WARNING: screen_update_cell_data called with NULL address, skipping cell data update\n");
+        return;
+    }
     if (self->paused_rendering.expires_at) {
         if (!self->paused_rendering.cell_data_updated) {
             LineBuf *linebuf = self->paused_rendering.linebuf;
@@ -3516,6 +3522,11 @@ screen_has_selection(Screen *self) {
 
 void
 screen_apply_selection(Screen *self, void *address, size_t size) {
+    // Safety check: if address is NULL (e.g., glMapBuffer failed), skip to avoid crash
+    if (address == NULL) {
+        fprintf(stderr, "WARNING: screen_apply_selection called with NULL address, skipping selection update\n");
+        return;
+    }
     memset(address, 0, size);
     Selections *sel = self->paused_rendering.expires_at ? &self->paused_rendering.selections : &self->selections;
     for (size_t i = 0; i < sel->count; i++) apply_selection(self, address, sel->items + i, 1);
